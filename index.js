@@ -30,6 +30,7 @@ async function run() {
     // await client.connect();
 
     const userCollection = client.db("student_information").collection("students");
+    const postsCollection = client.db('student_information').collection('posts');
 
     app.post('/users', async (req, res) => {
         const user = req.body;
@@ -85,6 +86,121 @@ async function run() {
       };
       const result = await userCollection.updateOne(filter, updatedUser, options);
       res.send(result);
+    })
+
+    //post create api
+
+    app.post('/posts', async (req, res) => {
+        const post = req.body;
+        const result = await postsCollection.insertOne(post);
+        res.send(result);
+    })
+
+    app.get('/posts', async (req, res) => {
+        const result = await postsCollection.find().toArray();
+        res.send(result);
+    })
+
+    // feedback related api
+    
+    app.put('/feedback/:id', async(req,res)=> {
+        const id = req.params.id;
+        const feedbackBody = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const giveFeedback = {
+          $push: {
+            comment: feedbackBody
+          },
+          $inc: {
+            totalComment: 1,
+            totalReaction: 1
+          }
+        }
+        const result = await postsCollection.updateOne(filter, giveFeedback, options);
+        res.send(result);
+    })
+
+    // like related api
+    
+    app.put('/like/:id', async(req,res)=> {
+        const id = req.params.id;
+        const likeBody = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const giveLike = {
+          $push: {
+            like: likeBody
+          },
+          $inc: {
+            totalLike: 1,
+            totalReaction: 1
+          }
+        }
+        const result = await postsCollection.updateOne(filter, giveLike, options);
+        res.send(result);
+    })
+    
+    //unlike related api
+    
+    app.put('/unlike/:id', async(req,res)=> {
+        const id = req.params.id;
+        const unLikeBody = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const giveUnLike = {
+          $pull: {
+            like: unLikeBody
+          },
+          $inc: {
+            totalLike: -1,
+            totalReaction: -1
+          }
+        }
+        const result = await postsCollection.updateOne(filter, giveUnLike, options);
+        res.send(result);
+    })
+
+    // my post
+
+    app.get('/specificPost', async (req, res) => {
+        let query = {}
+        if (req.query?.username) {
+          query = { username: req.query?.username }
+        }
+        const result = await postsCollection.find(query).toArray();
+        res.send(result)
+    })
+
+    app.delete('/post/:id', async(req,res)=>{
+        const id = req.params.id;
+        const query = { _id : new ObjectId(id)};
+        const result = await postsCollection.deleteOne(query);
+        res.send(result);
+    })
+
+      //update blog
+    app.get('/post/:id', async (req, res) => {
+        const id = req.params.id;
+        const query = { _id : new ObjectId(id)};
+        const result = await postsCollection.findOne(query);
+        res.send(result);
+    })
+  
+    app.put('/post/:id', async(req,res)=>{
+        const id = req.params.id;
+        const blogInfo = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const updateBlog = {
+          $set: {
+            name: blogInfo.name,
+            blogTitle: blogInfo.blogTitle,
+            blog: blogInfo.blog,
+          },
+        }
+        const result = await postsCollection.updateOne(filter, updateBlog, options);
+        res.send(result);
     })
 
 
