@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 require('dotenv').config()
@@ -24,6 +25,21 @@ const client = new MongoClient(uri, {
   }
 });
 
+const verifyJwt = (req,res,next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res.status(401).send({ error: true, message: 'unauthorized Access' });
+  }
+  const token = authorization.split(' ')[1];
+  jwt.verify(token, process.env.access_token, (error, decoded) => {
+    if (error) {
+      return res.send({error:true, message:'unauthorized access'})
+    }
+    req.decoded = decoded;
+    next();
+  })
+}
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -31,6 +47,16 @@ async function run() {
 
     const userCollection = client.db("student_information").collection("students");
     const postsCollection = client.db('student_information').collection('posts');
+
+    //jwt
+    app.post('/jwt', (req, res) => {
+        const user = req.body;
+        const token = jwt.sign(user, process.env.access_token, {expiresIn:'5hr'})
+        res.send({token})
+    })
+
+
+    // authenticate
 
     app.post('/users', async (req, res) => {
         const user = req.body;
@@ -60,8 +86,6 @@ async function run() {
         }
     })
 
-    //update
-
     app.get('/forgetPassword/:email', async (req, res) => {
         const user = req.params.email;
         const email = { email: user };
@@ -90,20 +114,20 @@ async function run() {
 
     //post create api
 
-    app.post('/posts', async (req, res) => {
+    app.post('/posts', verifyJwt, async (req, res) => {
         const post = req.body;
         const result = await postsCollection.insertOne(post);
         res.send(result);
     })
 
-    app.get('/posts', async (req, res) => {
+    app.get('/posts', verifyJwt, async (req, res) => {
         const result = await postsCollection.find().toArray();
         res.send(result);
     })
 
     // feedback related api
     
-    app.put('/feedback/:id', async(req,res)=> {
+    app.put('/feedback/:id', verifyJwt, async(req,res)=> {
         const id = req.params.id;
         const feedbackBody = req.body;
         const filter = { _id: new ObjectId(id) };
@@ -123,7 +147,7 @@ async function run() {
 
     // like related api
     
-    app.put('/like/:id', async(req,res)=> {
+    app.put('/like/:id', verifyJwt, async(req,res)=> {
         const id = req.params.id;
         const likeBody = req.body;
         const filter = { _id: new ObjectId(id) };
@@ -143,7 +167,7 @@ async function run() {
     
     //unlike related api
     
-    app.put('/unlike/:id', async(req,res)=> {
+    app.put('/unlike/:id', verifyJwt, async(req,res)=> {
         const id = req.params.id;
         const unLikeBody = req.body;
         const filter = { _id: new ObjectId(id) };
@@ -163,7 +187,7 @@ async function run() {
 
     // my post
 
-    app.get('/specificPost', async (req, res) => {
+    app.get('/specificPost', verifyJwt, async (req, res) => {
         let query = {}
         if (req.query?.username) {
           query = { username: req.query?.username }
@@ -172,7 +196,7 @@ async function run() {
         res.send(result)
     })
 
-    app.delete('/post/:id', async(req,res)=>{
+    app.delete('/post/:id', verifyJwt, async(req,res)=>{
         const id = req.params.id;
         const query = { _id : new ObjectId(id)};
         const result = await postsCollection.deleteOne(query);
@@ -180,14 +204,14 @@ async function run() {
     })
 
       //update blog
-    app.get('/post/:id', async (req, res) => {
+    app.get('/post/:id', verifyJwt, async (req, res) => {
         const id = req.params.id;
         const query = { _id : new ObjectId(id)};
         const result = await postsCollection.findOne(query);
         res.send(result);
     })
   
-    app.put('/post/:id', async(req,res)=>{
+    app.put('/post/:id', verifyJwt, async(req,res)=>{
         const id = req.params.id;
         const blogInfo = req.body;
         const filter = { _id: new ObjectId(id) };
