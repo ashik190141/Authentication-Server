@@ -27,8 +27,9 @@ const client = new MongoClient(uri, {
 
 const verifyJwt = (req,res,next) => {
   const authorization = req.headers.authorization;
+  console.log(authorization);
   if (!authorization) {
-    return res.status(401).send({ error: true, message: 'unauthorized Access' });
+    return res.status(401).send({ error: true, message: 'unauthorized Access(401)' });
   }
   const token = authorization.split(' ')[1];
   jwt.verify(token, process.env.access_token, (error, decoded) => {
@@ -51,7 +52,7 @@ async function run() {
     //jwt
     app.post('/jwt', (req, res) => {
         const user = req.body;
-        const token = jwt.sign(user, process.env.access_token, {expiresIn:'5hr'})
+        const token = jwt.sign(user, process.env.access_token, {expiresIn:'24hr'})
         res.send({token})
     })
 
